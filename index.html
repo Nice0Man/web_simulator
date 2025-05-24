@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор передачи сообщений</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            /* Основные цвета */
+            --primary-color: #4253c2;
+            --primary-hover: #bd7bff;
+            --primary-active: #004494;
+            --primary-light: rgba(0, 123, 255, 0.25);
+            
+            /* Цвета состояний */
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --danger-dark: #c82333;
+            --info-color: #2196f3;
+            --info-light: #e3f2fd;
+            
+            /* Фоновые цвета */
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --bg-white: rgba(255, 255, 255, 0.95);
+            --bg-light: #f8f9fa;
+            --bg-section: #fafafa;
+            
+            /* Границы */
+            --border-color: #e9ecef;
+            --border-light: #dee2e6;
+            --border-dark: #e0e0e0;
+            --border-focus: #ffffff;
+            
+            /* Текстовые цвета */
+            --text-dark: #2c3e50;
+            --text-muted: #7f8c8d;
+            --text-secondary: #495057;
+            --text-light: #6c757d;
+            --text-white: #ffffff;
+            
+            /* Тени */
+            --shadow-light: 0 3px 10px rgba(0, 0, 0, 0.05);
+            --shadow-medium: 0 5px 15px rgba(0, 0, 0, 0.08);
+            --shadow-heavy: 0 20px 40px rgba(0, 0, 0, 0.15);
+            --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.3);
+            --shadow-button: 0 5px 15px rgba(0, 123, 255, 0.4);
+            --shadow-slider: 0 2px 5px rgba(0, 0, 0, 0.2);
+            --text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            --text-shadow-contrast: 1px 1px 1px rgba(0, 0, 0, 0.5);
+            
+            /* Сообщения об ошибках и успехе */
+            --error-bg: #f8d7da;
+            --error-text: #721c24;
+            --error-border: #f5c6cb;
+            --success-bg: #d4edda;
+            --success-text: #155724;
+            --success-border: #c3e6cb;
+            
+            /* Специальные цвета */
+            --bus-color: #ff6b35;
+            --disabled-color: #6c757d;
+            --link-color: #6c757d;
+            
+            /* Цвета узлов в сети */
+            --node-default: var(--primary-color);
+            --node-default-stroke: var(--primary-hover);
+            --node-active: var(--danger-color);
+            --node-queue: var(--warning-color);
+            --node-message: var(--danger-color);
+            --node-message-stroke: var(--danger-dark);
+        }
+
+        /* Общие стили */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg-white);
+            border-radius: 15px;
+            box-shadow: var(--shadow-heavy);
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--border-dark);
+        }
+        
+        .header h1 {
+            color: var(--text-dark);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: var(--text-shadow);
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--bg-light);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Контролы форм */
+        select, button, input[type="text"], input[type="number"] {
+            padding: 12px 15px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+            color: var(--text-secondary);
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, var(--primary-hover), var(--primary-active));
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-button);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: var(--disabled-color);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .flat-input {
+            border: none;
+            border-bottom: 2px solid var(--border-color);
+            border-radius: 0;
+            background: transparent;
+            padding: 8px 5px;
+        }
+
+        .flat-input:focus {
+            border-bottom-color: var(--primary-color);
+            box-shadow: none;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border-color);
+            outline: none;
+            appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: var(--shadow-slider);
+        }
+
+        /* Специальные компоненты */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            min-height: 600px;
+        }
+        
+        .visualization {
+            background: white;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            padding: 20px;
+            box-shadow: var(--shadow-medium);
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Панели состояния */
+        .status-panel {
+            background: white;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            padding: 15px;
+            box-shadow: var(--shadow-light);
+        }
+        
+        .status-panel h3 {
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 16px;
+        }
+        
+        .processor-queue {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: var(--bg-light);
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .processor-queue.active {
+            background: var(--info-light);
+            border-left-color: var(--info-color);
+        }
+        
+        .message {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .transfers-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .transfer-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: var(--bg-light);
+            border-radius: 6px;
+            border-left: 3px solid var(--success-color);
+            font-size: 13px;
+        }
+
+        /* SVG и визуализация */
+        .network-svg {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-section);
+        }
+        
+        .node {
+            fill: var(--node-default);
+            stroke: var(--node-default-stroke);
+            stroke-width: 0.5;
+            cursor: pointer;
+        }
+        
+        .node text {
+            fill: var(--text-white) !important;
+            font-weight: bold;
+            font-size: 14px;
+            pointer-events: none;
+            user-select: none;
+            text-shadow: var(--text-shadow-contrast);
+        }
+
+        .node:hover {
+            fill: var(--primary-hover);
+            stroke-width: 1;
+        }
+        
+        .link {
+            stroke: var(--link-color);
+            stroke-width: 2;
+            stroke-opacity: 0.6;
+        }
+        
+        .message-arrow {
+            fill: var(--node-message);
+            stroke: var(--node-message-stroke);
+            stroke-width: 1;
+        }
+
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: var(--shadow-modal);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .error-message {
+            background: var(--error-bg);
+            color: var(--error-text);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--error-border);
+            margin: 10px 0;
+        }
+
+        .success-message {
+            background: var(--success-bg);
+            color: var(--success-text);
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid var(--success-border);
+            margin: 10px 0;
+        }
+
+        .grid-controls {
+            display: none;
+            gap: 15px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speed-value {
+            font-weight: bold;
+            color: var(--primary-color);
+            min-width: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+        }
+
+        /* Стили для контролов гиперкуба */
+        .hypercube-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .dimension-select {
+            padding: 8px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
+            min-width: 60px;
+        }
+
+        .dimension-separator {
+            font-weight: bold;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .dimension-btn {
+            padding: 8px 12px;
+            min-width: 40px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            background: white;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .dimension-btn:hover {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Симулятор передачи сообщений</h1>
+            <p>Визуализация алгоритмов маршрутизации в различных топологиях сетей</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="topology">Топология сети:</label>
+                <select id="topology">
+                    <option value="complete">Полный граф</option>
+                    <option value="ring">Кольцо</option>
+                    <option value="linear">Линейный массив</option>
+                    <option value="grid">Решетка</option>
+                    <option value="гиперкуб">Гиперкуб</option>
+                    <option value="bus">Общая шина</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="processors">Количество процессоров:</label>
+                <input type="number" id="processors" min="2" max="64" value="8">
+            </div>
+            
+            <div class="control-group grid-controls" id="gridDimensionsGroup">
+                <label>Размеры решетки:</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" id="gridWidth" min="2" max="8" value="3" placeholder="Ширина">
+                    <input type="number" id="gridHeight" min="2" max="8" value="3" placeholder="Высота">
+                </div>
+            </div>
+
+            <!-- Контролы для гиперкуба -->
+            <div class="control-group" id="hypercubeDimensionsGroup" style="display: none;">
+                <label for="hypercubeDimensions">Размерности гиперкуба:</label>
+                <div class="hypercube-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <select id="hypercubeDim1" class="dimension-select">
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                    </select>
+                    <span class="dimension-separator">×</span>
+                    <select id="hypercubeDim2" class="dimension-select">
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                    </select>
+                    <button type="button" id="addHypercubeDim" class="dimension-btn">+</button>
+                    <button type="button" id="removeHypercubeDim" class="dimension-btn">-</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+            <button id="inputData">Ввод данных</button>
+            <button id="createSystem">Создать систему</button>
+            </div>
+
+            <div class="control-group">
+                <button id="nextStep" disabled>Следующий такт</button>
+                <button id="reset" disabled>Сброс</button>
+                <button id="autoRun" disabled>Автозапуск</button>
+            </div>
+
+            <div class="control-group">
+                <label for="speedSlider">Скорость симуляции:</label>
+                <div class="speed-control">
+                    <input type="range" id="speedSlider" min="100" max="2000" value="1000" step="100">
+                    <span class="speed-value" id="speedValue">1000ms</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="visualization">
+                <svg id="networkSvg" class="network-svg" style="display: none;"></svg>
+                <canvas id="networkCanvas" class="network-svg" style="display: block;"></canvas>
+            </div>
+            
+            <div class="sidebar">
+                <div class="status-panel">
+                    <h3>Информация о симуляции</h3>
+                    <div id="cycleInfo">Такт: 0</div>
+                    <div id="systemStatus">Система не создана</div>
+                </div>
+                
+                <div class="status-panel">
+                    <h3>Очереди процессоров</h3>
+                    <div id="processorQueues"></div>
+                </div>
+                
+                <div class="status-panel">
+                    <h3>Активные передачи</h3>
+                    <div id="transfersList" class="transfers-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для ввода данных -->
+    <div id="dataInputModal" class="modal">
+        <div class="modal-content">
+            <h2>Ввод сообщений</h2>
+            <p>Введите сообщения в формате: отправитель,получатель,данные</p>
+            
+            <div id="defaultExample" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <strong>Пример:</strong><br>
+                <code>0,3,Hello<br>1,2,World<br>2,0,Test</code>
+            </div>
+            
+            <textarea id="messageData" rows="8" style="width: 100%; padding: 15px; border: 2px solid #e9ecef; border-radius: 8px; font-family: monospace;" placeholder="0,3,Hello&#10;1,2,World&#10;2,0,Test"></textarea>
+            
+            <div id="parseMessage" class="error-message" style="display: none;"></div>
+            
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button id="useDefault">Использовать пример</button>
+                <button id="parseData">Применить</button>
+                <button id="cancelInput" style="background: #6c757d;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MessagePassingSimulator {
+            constructor() {
+                this.processors = [];
+                this.topology = 'complete';
+                this.adjacencyMatrix = [];
+                this.messages = [];
+                this.cycle = 0;
+                this.isRunning = false;
+                this.autoRunInterval = null;
+                this.speed = 1000;
+                this.history = [];
+                
+                // Параметры для гиперкуба
+                this.hypercubeDimensions = [2, 2];
+                this.hypercubeDimensionCount = 2;
+                this.numProcessors = 8;
+                
+                // Инициализация Canvas и SVG
+                this.canvas = document.getElementById('networkCanvas');
+                this.svg = document.getElementById('networkSvg');
+                
+                this.initializeControls();
+            }
+            
+            initializeControls() {
+                // Обработчики топологии
+                document.getElementById('topology').addEventListener('change', (e) => {
+                    this.topology = e.target.value;
+                    this.toggleDimensionInputs();
+                    this.updateProcessorOptions();
+                });
+
+                // Обработчики процессоров
+                document.getElementById('processors').addEventListener('change', () => {
+                    this.updateProcessorOptions();
+                });
+
+                // Обработчики решетки
+                document.getElementById('gridWidth').addEventListener('change', () => {
+                    this.updateProcessorOptions();
+                });
+                document.getElementById('gridHeight').addEventListener('change', () => {
+                    this.updateProcessorOptions();
+                });
+
+                // Обработчики гиперкуба
+                this.initializeHypercubeControls();
+                this.updateHypercubeDimensionHandlers();
+
+                // Обработчики модального окна
+                document.getElementById('inputData').addEventListener('click', () => {
+                    this.showDataInputModal();
+                });
+
+                document.getElementById('useDefault').addEventListener('click', () => {
+                    this.useDefaultMessages();
+                });
+
+                document.getElementById('parseData').addEventListener('click', () => {
+                    this.parseInputData();
+                });
+
+                document.getElementById('cancelInput').addEventListener('click', () => {
+                        document.getElementById('dataInputModal').style.display = 'none';
+                    });
+
+                // Обработчики управления симуляцией
+                document.getElementById('createSystem').addEventListener('click', () => {
+                    this.createSystem();
+                });
+
+                document.getElementById('nextStep').addEventListener('click', () => {
+                    this.nextStep();
+                });
+
+                document.getElementById('reset').addEventListener('click', () => {
+                    this.reset();
+                });
+
+                document.getElementById('autoRun').addEventListener('click', () => {
+                    this.toggleAutoRun();
+                });
+
+                // Обработчик слайдера скорости
+                document.getElementById('speedSlider').addEventListener('input', (e) => {
+                    this.speed = parseInt(e.target.value);
+                    document.getElementById('speedValue').textContent = this.speed + 'ms';
+                });
+
+                this.toggleDimensionInputs();
+                this.updateProcessorOptions();
+            }
+            
+            updateProcessorOptions() {
+                const topology = document.getElementById('topology').value;
+                const processorsInput = document.getElementById('processors');
+                
+                let totalProcessors = 1;
+                
+                if (topology === 'grid') {
+                    const width = parseInt(document.getElementById('gridWidth').value) || 3;
+                    const height = parseInt(document.getElementById('gridHeight').value) || 3;
+                    totalProcessors = width * height;
+                    processorsInput.value = totalProcessors;
+                    processorsInput.disabled = true;
+                } else if (topology === 'гиперкуб') {
+                    // Для гиперкуба количество процессоров вычисляется из размерностей
+                    totalProcessors = this.numProcessors;
+                    processorsInput.value = totalProcessors;
+                    processorsInput.disabled = true;
+                } else {
+                    processorsInput.disabled = false;
+                    totalProcessors = parseInt(processorsInput.value) || 8;
+                }
+
+                // Обновляем максимальное значение для других топологий
+                if (topology !== 'grid' && topology !== 'гиперкуб') {
+                    processorsInput.max = topology === 'complete' ? 20 : 64;
+                }
+            }
+
+            showDataInputModal() {
+                document.getElementById('dataInputModal').style.display = 'block';
+                this.generateDefaultMessages();
+            }
+
+            generateDefaultMessages() {
+                const numProcessors = parseInt(document.getElementById('processors').value) || 8;
+                const examples = [];
+                
+                // Генерируем несколько примеров сообщений
+                for (let i = 0; i < Math.min(5, numProcessors - 1); i++) {
+                    const sender = Math.floor(Math.random() * numProcessors);
+                    let receiver = Math.floor(Math.random() * numProcessors);
+                    while (receiver === sender) {
+                        receiver = Math.floor(Math.random() * numProcessors);
+                    }
+                    examples.push(`${sender},${receiver},Сообщение_${i + 1}`);
+                }
+
+                const exampleDiv = document.getElementById('defaultExample');
+                exampleDiv.innerHTML = `<strong>Пример для ${numProcessors} процессоров:</strong><br><code>${examples.join('<br>')}</code>`;
+            }
+
+            useDefaultMessages() {
+                const numProcessors = parseInt(document.getElementById('processors').value) || 8;
+                const messages = [];
+                
+                for (let i = 0; i < Math.min(5, numProcessors - 1); i++) {
+                    const sender = Math.floor(Math.random() * numProcessors);
+                    let receiver = Math.floor(Math.random() * numProcessors);
+                    while (receiver === sender) {
+                        receiver = Math.floor(Math.random() * numProcessors);
+                    }
+                    messages.push(`${sender},${receiver},Сообщение_${i + 1}`);
+                }
+
+                document.getElementById('messageData').value = messages.join('\n');
+            }
+            
+            parseInputData() {
+                const input = document.getElementById('messageData').value.trim();
+                const messageDiv = document.getElementById('parseMessage');
+                
+                if (!input) {
+                    this.showMessage('Введите сообщения', 'error');
+                    return;
+                }
+                
+                try {
+                    const lines = input.split('\n').filter(line => line.trim());
+                    const messages = [];
+                    const numProcessors = parseInt(document.getElementById('processors').value);
+
+                    for (let i = 0; i < lines.length; i++) {
+                        const parts = lines[i].split(',').map(p => p.trim());
+                        if (parts.length !== 3) {
+                            throw new Error(`Строка ${i + 1}: неверный формат (ожидается: отправитель,получатель,данные)`);
+                        }
+
+                        const sender = parseInt(parts[0]);
+                        const receiver = parseInt(parts[1]);
+                        const data = parts[2];
+
+                        if (isNaN(sender) || isNaN(receiver)) {
+                            throw new Error(`Строка ${i + 1}: отправитель и получатель должны быть числами`);
+                        }
+
+                        if (sender < 0 || sender >= numProcessors || receiver < 0 || receiver >= numProcessors) {
+                            throw new Error(`Строка ${i + 1}: номера процессоров должны быть от 0 до ${numProcessors - 1}`);
+                        }
+
+                        if (sender === receiver) {
+                            throw new Error(`Строка ${i + 1}: отправитель и получатель не могут быть одинаковыми`);
+                        }
+
+                        messages.push({ sender, receiver, data });
+                    }
+
+                    this.messages = messages;
+                    document.getElementById('dataInputModal').style.display = 'none';
+                    this.showMessage(`Загружено ${messages.length} сообщений`, 'success');
+                    
+                } catch (error) {
+                    this.showMessage(error.message, 'error');
+                }
+            }
+            
+            showMessage(text, type) {
+                const messageDiv = document.getElementById('parseMessage');
+                messageDiv.textContent = text;
+                messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+                messageDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+            
+            createSystem() {
+                const numProcessors = parseInt(document.getElementById('processors').value);
+                
+                if (!this.messages || this.messages.length === 0) {
+                    this.showMessage('Сначала введите сообщения', 'error');
+                    return;
+                }
+
+                // Сброс цикла при создании новой системы
+                this.cycle = 0;
+                this.history = [];
+
+                this.processors = Array.from({ length: numProcessors }, (_, i) => ({
+                    id: i,
+                    queue: [],
+                    activeTransfers: []
+                }));
+
+                this.createTopology();
+                this.initializeMessages();
+                this.updateVisualization();
+                this.updateStatus();
+                this.saveState();
+
+                // Активируем кнопки управления
+                document.getElementById('nextStep').disabled = false;
+                document.getElementById('reset').disabled = false;
+                document.getElementById('autoRun').disabled = false;
+                
+                this.showMessage(`Система создана с топологией "${this.topology}"`, 'success');
+            }
+            
+            createTopology() {
+                const numProcessors = this.processors.length;
+                this.adjacencyMatrix = Array(numProcessors).fill().map(() => Array(numProcessors).fill(false));
+
+                switch (this.topology) {
+                    case 'complete':
+                        // Полный граф - все соединены со всеми
+                        for (let i = 0; i < numProcessors; i++) {
+                            for (let j = 0; j < numProcessors; j++) {
+                                if (i !== j) {
+                                    this.adjacencyMatrix[i][j] = true;
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'ring':
+                        // Кольцо - каждый соединен с соседями
+                        for (let i = 0; i < numProcessors; i++) {
+                            this.adjacencyMatrix[i][(i + 1) % numProcessors] = true;
+                            this.adjacencyMatrix[i][(i - 1 + numProcessors) % numProcessors] = true;
+                        }
+                        break;
+                        
+                    case 'linear':
+                        // Линейный массив
+                        for (let i = 0; i < numProcessors - 1; i++) {
+                            this.adjacencyMatrix[i][i + 1] = true;
+                            this.adjacencyMatrix[i + 1][i] = true;
+                        }
+                        break;
+                        
+                    case 'grid':
+                        const width = parseInt(document.getElementById('gridWidth').value);
+                        const height = parseInt(document.getElementById('gridHeight').value);
+                        
+                        for (let i = 0; i < height; i++) {
+                            for (let j = 0; j < width; j++) {
+                                const nodeId = i * width + j;
+                                
+                                // Соединения по горизонтали
+                                if (j < width - 1) {
+                                    this.adjacencyMatrix[nodeId][nodeId + 1] = true;
+                                    this.adjacencyMatrix[nodeId + 1][nodeId] = true;
+                                }
+                                
+                                // Соединения по вертикали
+                                if (i < height - 1) {
+                                    this.adjacencyMatrix[nodeId][nodeId + width] = true;
+                                    this.adjacencyMatrix[nodeId + width][nodeId] = true;
+                                }
+                            }
+                        }
+                        break;
+                        
+                    case 'гиперкуб':
+                        // Гиперкуб - создаем связи на основе размерностей
+                        this.createHypercubeTopology();
+                        break;
+                        
+                    case 'bus':
+                        // Общая шина - все процессоры могут общаться друг с другом через шину
+                        for (let i = 0; i < numProcessors; i++) {
+                            for (let j = 0; j < numProcessors; j++) {
+                                if (i !== j) {
+                                    this.adjacencyMatrix[i][j] = true;
+                                }
+                            }
+                        }
+                        break;
+                }
+            }
+            
+            initializeMessages() {
+                // Размещаем сообщения в очередях отправителей
+                this.messages.forEach(msg => {
+                    this.processors[msg.sender].queue.push({
+                        ...msg,
+                        id: Math.random().toString(36).substr(2, 9),
+                        path: this.findShortestPath(msg.sender, msg.receiver),
+                        currentStep: 0
+                    });
+                });
+            }
+            
+            saveState() {
+                this.history.push({
+                    cycle: this.cycle,
+                    processors: JSON.parse(JSON.stringify(this.processors))
+                });
+            }
+
+            findShortestPath(start, end) {
+                const queue = [[start]];
+                const visited = new Set([start]);
+                
+                while (queue.length > 0) {
+                    const path = queue.shift();
+                    const node = path[path.length - 1];
+                    
+                    if (node === end) {
+                        return path;
+                    }
+                    
+                    for (let neighbor = 0; neighbor < this.processors.length; neighbor++) {
+                        if (this.adjacencyMatrix[node][neighbor] && !visited.has(neighbor)) {
+                            visited.add(neighbor);
+                            queue.push([...path, neighbor]);
+                        }
+                    }
+                }
+                
+                return [start]; // Путь не найден
+            }
+
+            getNextHop(currentNode, targetNode) {
+                const path = this.findShortestPath(currentNode, targetNode);
+                return path.length > 1 ? path[1] : currentNode;
+            }
+            
+            getNeighbors(nodeId) {
+                const neighbors = [];
+                for (let i = 0; i < this.processors.length; i++) {
+                    if (this.adjacencyMatrix[nodeId][i]) {
+                        neighbors.push(i);
+                    }
+                }
+                return neighbors;
+            }
+            
+            nextStep() {
+                if (this.isComplete()) {
+                    this.showMessage('Симуляция завершена', 'success');
+                    return;
+                }
+                
+                this.cycle++;
+                
+                // Обрабатываем активные передачи
+                this.processors.forEach(processor => {
+                    processor.activeTransfers = processor.activeTransfers.filter(transfer => {
+                        transfer.progress++;
+                        if (transfer.progress >= 2) { // Передача занимает 2 такта
+                            // Сообщение прибыло в пункт назначения
+                            if (transfer.targetNode === transfer.message.receiver) {
+                                // Сообщение доставлено
+                                return false;
+                        } else {
+                                // Добавляем в очередь следующего узла
+                                this.processors[transfer.targetNode].queue.push(transfer.message);
+                                return false;
+                            }
+                        }
+                        return true;
+                    });
+                });
+
+                // Обрабатываем очереди и инициируем новые передачи
+                this.processors.forEach(processor => {
+                    if (processor.queue.length > 0 && processor.activeTransfers.length === 0) {
+                        const message = processor.queue.shift();
+                        const nextHop = this.getNextHop(processor.id, message.receiver);
+                        
+                        if (nextHop !== processor.id) {
+                            processor.activeTransfers.push({
+                                message: message,
+                                targetNode: nextHop,
+                                progress: 0
+                                });
+                            }
+                        }
+                });
+                
+                this.updateVisualization();
+                this.updateStatus();
+                this.saveState();
+                
+                if (this.isComplete()) {
+                    this.stopAutoRun();
+                    this.showMessage('Все сообщения доставлены!', 'success');
+                }
+            }
+            
+            isComplete() {
+                return this.processors.every(processor => 
+                    processor.queue.length === 0 && processor.activeTransfers.length === 0
+                );
+            }
+            
+            reset() {
+                this.cycle = 0;
+                this.stopAutoRun();
+                this.history = [];
+                
+                if (this.processors.length > 0) {
+                    // Очищаем все очереди и активные передачи
+                    this.processors.forEach(processor => {
+                        processor.queue = [];
+                        processor.activeTransfers = [];
+                    });
+                    
+                    this.initializeMessages();
+                    this.updateVisualization();
+                    this.updateStatus();
+                    this.saveState();
+                    this.showMessage('Система сброшена', 'success');
+                }
+            }
+            
+            toggleAutoRun() {
+                if (this.isRunning) {
+                    this.stopAutoRun();
+                } else {
+                    this.startAutoRun();
+                }
+            }
+            
+            startAutoRun() {
+                this.isRunning = true;
+                document.getElementById('autoRun').textContent = 'Остановить';
+                document.getElementById('nextStep').disabled = true;
+                
+                this.autoRunInterval = setInterval(() => {
+                this.autoStep();
+                }, this.speed);
+            }
+            
+            stopAutoRun() {
+                this.isRunning = false;
+                document.getElementById('autoRun').textContent = 'Автозапуск';
+                document.getElementById('nextStep').disabled = false;
+                
+                if (this.autoRunInterval) {
+                    clearInterval(this.autoRunInterval);
+                    this.autoRunInterval = null;
+                }
+            }
+            
+            autoStep() {
+                if (this.isComplete()) {
+                    this.stopAutoRun();
+                    return;
+                }
+                this.nextStep();
+            }
+            
+            updateVisualization() {
+                // Используем SVG для всех топологий
+                this.canvas.style.display = 'none';
+                this.svg.style.display = 'block';
+                
+                const svg = d3.select('#networkSvg');
+                svg.selectAll('*').remove();
+                
+                const width = 800;
+                const height = 500;
+                const nodeRadius = 20;
+                
+                // Позиционирование узлов в зависимости от топологии
+                const positions = this.getNodePositions(width, height);
+                
+                // Специальная отрисовка для общей шины
+                if (this.topology === 'bus') {
+                    // Рисуем саму шину (горизонтальную линию)
+                        const busY = height / 2;
+                        const busStartX = 100;
+                        const busEndX = width - 100;
+                        
+                        svg.append('line')
+                            .attr('x1', busStartX)
+                            .attr('y1', busY)
+                            .attr('x2', busEndX)
+                        .attr('y2', busY)
+                        .attr('stroke', 'var(--bus-color)')
+                        .attr('stroke-width', 6)
+                        .attr('stroke-linecap', 'round');
+                        
+                    // Подпись шины
+                        svg.append('text')
+                            .attr('x', width / 2)
+                        .attr('y', busY - 25)
+                            .attr('text-anchor', 'middle')
+                            .attr('font-size', '14px')
+                            .attr('font-weight', 'bold')
+                            .attr('fill', 'var(--bus-color)')
+            
+                        
+                    // Рисуем вертикальные линии от процессоров к шине
+                    this.processors.forEach((processor, i) => {
+                        const pos = positions[i];
+                        if (Math.abs(pos.y - busY) > 5) { // Если процессор не на шине
+                            svg.append('line')
+                                .attr('x1', pos.x)
+                                .attr('y1', pos.y)
+                                .attr('x2', pos.x)
+                                .attr('y2', busY)
+                                .attr('stroke', 'var(--link-color)')
+                                .attr('stroke-width', 2)
+                                .attr('stroke-dasharray', '5,5');
+                        }
+                    });
+                } else {
+                    // Отрисовка связей для остальных топологий
+                    const links = [];
+                    for (let i = 0; i < this.processors.length; i++) {
+                        for (let j = i + 1; j < this.processors.length; j++) {
+                            if (this.adjacencyMatrix[i][j]) {
+                                links.push({ source: i, target: j });
+                            }
+                        }
+                    }
+
+                    svg.selectAll('.link')
+                        .data(links)
+                        .enter()
+                        .append('line')
+                        .attr('class', 'link')
+                        .attr('x1', d => positions[d.source].x)
+                        .attr('y1', d => positions[d.source].y)
+                        .attr('x2', d => positions[d.target].x)
+                        .attr('y2', d => positions[d.target].y);
+                }
+
+                // Отрисовка узлов
+                const nodes = svg.selectAll('.node')
+                    .data(this.processors)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'node')
+                    .attr('transform', d => `translate(${positions[d.id].x},${positions[d.id].y})`);
+                
+                nodes.append('circle')
+                    .attr('r', nodeRadius)
+                    .attr('fill', d => {
+                        if (d.activeTransfers.length > 0) return 'var(--node-active)';
+                        if (d.queue.length > 0) return 'var(--node-queue)';
+                        return 'var(--node-default)';
+                    })
+                    .attr('stroke', 'var(--node-default-stroke)')
+                    .attr('stroke-width', 2);
+
+                nodes.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.3em')
+                    .attr('fill', 'white')
+                    .attr('font-weight', 'bold')
+                    .attr('font-size', '14px')
+                    .style('pointer-events', 'none')
+                    .style('user-select', 'none')
+                    .text(d => d.id);
+
+                // Показать очереди сообщений
+                nodes.append('text')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', nodeRadius + 15)
+                    .attr('fill', '#333')
+                    .attr('font-size', '12px')
+                    .text(d => d.queue.length > 0 ? `Q:${d.queue.length}` : '');
+
+                // Отрисовка активных передач
+                this.processors.forEach(processor => {
+                    processor.activeTransfers.forEach(transfer => {
+                        const sourcePos = positions[processor.id];
+                        const targetPos = positions[transfer.targetNode];
+                        
+                        const progress = transfer.progress / 2; // Нормализуем прогресс
+                        const x = sourcePos.x + (targetPos.x - sourcePos.x) * progress;
+                        const y = sourcePos.y + (targetPos.y - sourcePos.y) * progress;
+                        
+                        svg.append('circle')
+                            .attr('cx', x)
+                            .attr('cy', y)
+                            .attr('r', 8)
+                            .attr('fill', 'var(--node-message)')
+                            .attr('stroke', 'var(--node-message-stroke)')
+                            .attr('stroke-width', 2);
+                            
+                            svg.append('text')
+                            .attr('x', x)
+                            .attr('y', y + 3)
+                            .attr('text-anchor', 'middle')
+                            .attr('fill', 'white')
+                            .attr('font-size', '10px')
+                            .attr('font-weight', 'bold')
+                            .text('M');
+                    });
+                });
+            }
+
+            getNodePositions(width, height) {
+                const positions = [];
+                const numProcessors = this.processors.length;
+                const margin = 50;
+                const usableWidth = width - 2 * margin;
+                const usableHeight = height - 2 * margin;
+
+                switch (this.topology) {
+                    case 'complete':
+                        // Круговое расположение
+                        for (let i = 0; i < numProcessors; i++) {
+                            const angle = (2 * Math.PI * i) / numProcessors;
+                            const radius = Math.min(usableWidth, usableHeight) / 2 * 0.8;
+                            positions.push({
+                                x: width / 2 + radius * Math.cos(angle),
+                                y: height / 2 + radius * Math.sin(angle)
+                            });
+                        }
+                        break;
+
+                    case 'ring':
+                        // Круговое расположение
+                        for (let i = 0; i < numProcessors; i++) {
+                            const angle = (2 * Math.PI * i) / numProcessors;
+                            const radius = Math.min(usableWidth, usableHeight) / 2 * 0.8;
+                            positions.push({
+                                x: width / 2 + radius * Math.cos(angle),
+                                y: height / 2 + radius * Math.sin(angle)
+                            });
+                        }
+                        break;
+
+                    case 'linear':
+                        // Линейное расположение
+                        if (numProcessors === 1) {
+                            positions.push({
+                                x: width / 2,
+                                y: height / 2
+                            });
+                        } else {
+                            for (let i = 0; i < numProcessors; i++) {
+                                positions.push({
+                                    x: margin + (usableWidth * i) / (numProcessors - 1),
+                                    y: height / 2
+                                });
+                            }
+                        }
+                        break;
+
+                    case 'grid':
+                        const gridWidth = parseInt(document.getElementById('gridWidth').value);
+                        const gridHeight = parseInt(document.getElementById('gridHeight').value);
+                        
+                        if (gridWidth === 1 && gridHeight === 1) {
+                            positions.push({
+                                x: width / 2,
+                                y: height / 2
+                            });
+                        } else {
+                            const cellWidth = gridWidth > 1 ? usableWidth / (gridWidth - 1) : 0;
+                            const cellHeight = gridHeight > 1 ? usableHeight / (gridHeight - 1) : 0;
+                            
+                            for (let i = 0; i < gridHeight; i++) {
+                                for (let j = 0; j < gridWidth; j++) {
+                                    if (gridWidth === 1) {
+                                        positions.push({
+                                            x: width / 2,
+                                            y: margin + i * cellHeight
+                                        });
+                                    } else if (gridHeight === 1) {
+                                        positions.push({
+                                            x: margin + j * cellWidth,
+                                            y: height / 2
+                        });
+                    } else {
+                                        positions.push({
+                                            x: margin + j * cellWidth,
+                                            y: margin + i * cellHeight
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'гиперкуб':
+                        // Гиперкуб - используем 3D визуализацию с проекцией
+                        return this.create3DHypercubeVisualization(width, height);
+
+                    case 'bus':
+                        // Общая шина - все процессоры выше горизонтальной линии
+                        const busY = height / 2;
+                        const nodeY = busY - 60; // Узлы располагаются на 60px выше шины
+                        const busStartX = 100;
+                        const busEndX = width - 100;
+                        
+                        if (numProcessors === 1) {
+                            positions.push({
+                                x: width / 2,
+                                y: nodeY
+                            });
+                        } else {
+                            const stepX = (busEndX - busStartX) / (numProcessors - 1);
+                            for (let i = 0; i < numProcessors; i++) {
+                                positions.push({
+                                    x: busStartX + i * stepX,
+                                    y: nodeY
+                                });
+                            }
+                        }
+                        break;
+
+                    default:
+                        // По умолчанию - равномерное распределение
+                        if (numProcessors === 1) {
+                            positions.push({
+                                x: width / 2,
+                                y: height / 2
+                            });
+                        } else {
+                            const cols = Math.ceil(Math.sqrt(numProcessors));
+                            const rows = Math.ceil(numProcessors / cols);
+                            const cellW = usableWidth / Math.max(cols - 1, 1);
+                            const cellH = usableHeight / Math.max(rows - 1, 1);
+                            
+                            for (let i = 0; i < numProcessors; i++) {
+                                const row = Math.floor(i / cols);
+                                const col = i % cols;
+                                positions.push({
+                                    x: margin + col * cellW,
+                                    y: margin + row * cellH
+                                });
+                            }
+                        }
+                }
+
+                return positions;
+            }
+
+            adjustColorBrightness(color, factor) {
+                // Простая функция для изменения яркости цвета
+                const hex = color.replace('#', '');
+                const r = Math.min(255, Math.max(0, parseInt(hex.substr(0, 2), 16) * factor));
+                const g = Math.min(255, Math.max(0, parseInt(hex.substr(2, 2), 16) * factor));
+                const b = Math.min(255, Math.max(0, parseInt(hex.substr(4, 2), 16) * factor));
+                
+                return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+            }
+
+            updateStatus() {
+                // Обновление информации о цикле
+                document.getElementById('cycleInfo').textContent = `Такт: ${this.cycle}`;
+                
+                // Обновление статуса системы
+                const totalMessages = this.processors.reduce((sum, proc) => 
+                    sum + proc.queue.length + proc.activeTransfers.length, 0);
+                document.getElementById('systemStatus').textContent = 
+                    `Активных сообщений: ${totalMessages}`;
+
+                // Обновление очередей процессоров
+                const queuesDiv = document.getElementById('processorQueues');
+                queuesDiv.innerHTML = '';
+                
+                this.processors.forEach(processor => {
+                    const queueDiv = document.createElement('div');
+                    queueDiv.className = 'processor-queue';
+                    if (processor.activeTransfers.length > 0) {
+                        queueDiv.classList.add('active');
+                    }
+                    
+                    let queueContent = `Процессор ${processor.id}: `;
+                    if (processor.queue.length === 0 && processor.activeTransfers.length === 0) {
+                        queueContent += 'нет сообщений';
+                    } else {
+                        if (processor.queue.length > 0) {
+                            queueContent += `в очереди: ${processor.queue.length}`;
+                        }
+                        if (processor.activeTransfers.length > 0) {
+                            queueContent += ` передается: ${processor.activeTransfers.length}`;
+                        }
+                    }
+                    
+                    queueDiv.textContent = queueContent;
+                    queuesDiv.appendChild(queueDiv);
+                });
+
+                // Обновление списка передач
+                const transfersDiv = document.getElementById('transfersList');
+                transfersDiv.innerHTML = '';
+                
+                this.processors.forEach(processor => {
+                    processor.activeTransfers.forEach(transfer => {
+                        const transferDiv = document.createElement('div');
+                        transferDiv.className = 'transfer-item';
+                        transferDiv.textContent = 
+                            `${processor.id} → ${transfer.targetNode}: "${transfer.message.data}" (${transfer.progress}/2)`;
+                        transfersDiv.appendChild(transferDiv);
+                    });
+                });
+
+                if (transfersDiv.children.length === 0) {
+                    transfersDiv.innerHTML = '<div style="color: #6c757d; font-style: italic;">Нет активных передач</div>';
+                }
+            }
+
+            toggleDimensionInputs() {
+                const topology = document.getElementById('topology').value;
+                const gridControls = document.getElementById('gridDimensionsGroup');
+                const hypercubeControls = document.getElementById('hypercubeDimensionsGroup');
+                const processorsGroup = document.getElementById('processors').parentElement;
+                
+                // Скрываем все специальные контролы
+                gridControls.style.display = 'none';
+                hypercubeControls.style.display = 'none';
+                
+                // Показываем нужные контролы
+                if (topology === 'grid') {
+                    gridControls.style.display = 'flex';
+                    processorsGroup.style.display = 'none';
+                } else if (topology === 'гиперкуб') {
+                    hypercubeControls.style.display = 'flex';
+                    processorsGroup.style.display = 'none';
+                    
+                    // Убеждаемся, что контролы гиперкуба правильно инициализированы
+                    this.initializeHypercubeControls();
+                    this.updateHypercubeDimensions(); // Обновляем количество процессоров
+                } else {
+                    processorsGroup.style.display = 'flex';
+                }
+            }
+
+            // Обработчики гиперкуба
+            initializeHypercubeControls() {
+                const controls = document.querySelector('.hypercube-controls');
+                if (!controls) return;
+                
+                // Проверяем, что у нас есть минимум 2 размерности
+                const existingSelects = controls.querySelectorAll('select[id^="hypercubeDim"]');
+                console.log(`Найдено селектов: ${existingSelects.length}, ожидается: ${this.hypercubeDimensionCount}`);
+                
+                // Если селектов меньше чем нужно, пересоздаем контролы
+                if (existingSelects.length < this.hypercubeDimensionCount) {
+                    console.log('Пересоздание контролов гиперкуба');
+                    
+                    // Удаляем все селекты и разделители гиперкуба
+                    controls.querySelectorAll('select[id^="hypercubeDim"]').forEach(el => el.remove());
+                    controls.querySelectorAll('.dimension-separator').forEach(el => el.remove());
+                    
+                    // Находим кнопки
+                    const addButton = controls.querySelector('#addHypercubeDim');
+                    const removeButton = controls.querySelector('#removeHypercubeDim');
+                    
+                    // Создаем селекты заново
+                    for (let i = 1; i <= this.hypercubeDimensionCount; i++) {
+                        // Добавляем разделитель перед вторым и последующими селектами
+                        if (i > 1) {
+                            const separator = document.createElement('span');
+                            separator.className = 'dimension-separator';
+                            separator.textContent = '×';
+                            separator.style.display = 'inline-block';
+                            separator.style.visibility = 'visible';
+                            controls.insertBefore(separator, addButton);
+                        }
+                        
+                        // Создаем селект
+                        const select = document.createElement('select');
+                        select.id = `hypercubeDim${i}`;
+                        select.className = 'dimension-select';
+                        select.style.display = 'inline-block';
+                        select.style.visibility = 'visible';
+                        
+                        // Заполняем опции
+                        for (let j = 2; j <= 8; j++) {
+                            const option = document.createElement('option');
+                            option.value = j;
+                            option.textContent = j;
+                            if (j === 2) option.selected = true;
+                            select.appendChild(option);
+                        }
+                        
+                        controls.insertBefore(select, addButton);
+                        
+                        // Добавляем обработчик
+                        select.addEventListener('change', () => {
+                            this.updateHypercubeDimensions();
+                        });
+                    }
+                }
+                
+                // Принудительно обновляем отображение
+                controls.style.display = 'flex';
+                controls.style.flexWrap = 'wrap';
+                
+                setTimeout(() => {
+                    controls.offsetHeight; // Принудительный reflow
+                }, 0);
+            }
+
+            updateHypercubeDimensionHandlers() {
+                console.log('Обновление обработчиков размерностей гиперкуба');
+                
+                // Обработчик кнопки добавления размерности
+                const addButton = document.getElementById('addHypercubeDim');
+                if (addButton) {
+                    addButton.onclick = () => this.addHypercubeDimension();
+                }
+                
+                // Обработчик кнопки удаления размерности
+                const removeButton = document.getElementById('removeHypercubeDim');
+                if (removeButton) {
+                    removeButton.onclick = () => this.removeHypercubeDimension();
+                }
+                
+                // Обработчики селектов размерностей
+                for (let i = 1; i <= this.hypercubeDimensionCount; i++) {
+                    const select = document.getElementById(`hypercubeDim${i}`);
+                    if (select) {
+                        select.onchange = () => this.updateHypercubeDimensions();
+                    }
+                }
+            }
+
+            addHypercubeDimension() {
+                console.log('Добавление размерности гиперкуба');
+                
+                const controls = document.querySelector('.hypercube-controls');
+                if (!controls) {
+                    console.error('Контейнер .hypercube-controls не найден!');
+                    return;
+                }
+                
+                // Проверяем, активны ли контролы гиперкуба
+                const hypercubeGroup = document.getElementById('hypercubeDimensionsGroup');
+                if (!hypercubeGroup || hypercubeGroup.style.display === 'none') {
+                    console.log('Контролы гиперкуба неактивны, пропускаем добавление');
+                    return;
+                }
+                
+                // Ограничиваем максимальное количество размерностей
+                if (this.hypercubeDimensionCount >= 6) {
+                    console.log('Достигнуто максимальное количество размерностей (6)');
+                    return;
+                }
+                
+                this.hypercubeDimensionCount++;
+                console.log(`Новое количество размерностей: ${this.hypercubeDimensionCount}`);
+                
+                // Находим кнопку добавления
+                const addButton = document.getElementById('addHypercubeDim');
+                
+                // Добавляем разделитель
+                const separator = document.createElement('span');
+                separator.className = 'dimension-separator';
+                separator.textContent = '×';
+                separator.style.display = 'inline-block';
+                separator.style.visibility = 'visible';
+                controls.insertBefore(separator, addButton);
+                
+                // Создаем новый селект
+                const select = document.createElement('select');
+                select.id = `hypercubeDim${this.hypercubeDimensionCount}`;
+                select.className = 'dimension-select';
+                select.style.display = 'inline-block';
+                select.style.visibility = 'visible';
+                
+                // Заполняем опции
+                for (let j = 2; j <= 8; j++) {
+                    const option = document.createElement('option');
+                    option.value = j;
+                    option.textContent = j;
+                    if (j === 2) option.selected = true;
+                    select.appendChild(option);
+                }
+                
+                controls.insertBefore(select, addButton);
+                
+                // Добавляем обработчик
+                select.addEventListener('change', () => {
+                    this.updateHypercubeDimensions();
+                });
+                
+                // Обновляем размерности
+                this.updateHypercubeDimensions();
+                
+                // Обновляем обработчики
+                this.updateHypercubeDimensionHandlers();
+                
+                console.log(`✓ Добавлена размерность ${this.hypercubeDimensionCount}`);
+            }
+
+            removeHypercubeDimension() {
+                console.log('Удаление размерности гиперкуба');
+                
+                // Минимум 2 размерности
+                if (this.hypercubeDimensionCount <= 2) {
+                    console.log('Минимальное количество размерностей: 2');
+                    return;
+                }
+                
+                const controls = document.querySelector('.hypercube-controls');
+                if (!controls) {
+                    console.error('Контейнер .hypercube-controls не найден!');
+                    return;
+                }
+                
+                // Удаляем последний селект
+                const lastSelect = document.getElementById(`hypercubeDim${this.hypercubeDimensionCount}`);
+                if (lastSelect) {
+                    lastSelect.remove();
+                }
+                
+                // Удаляем последний разделитель
+                const separators = controls.querySelectorAll('.dimension-separator');
+                if (separators.length > 0) {
+                    separators[separators.length - 1].remove();
+                }
+                
+                this.hypercubeDimensionCount--;
+                console.log(`Новое количество размерностей: ${this.hypercubeDimensionCount}`);
+                
+                // Обновляем размерности
+                this.updateHypercubeDimensions();
+                
+                console.log(`✓ Удалена размерность, осталось: ${this.hypercubeDimensionCount}`);
+            }
+
+            updateHypercubeDimensions() {
+                console.log('Обновление размерностей гиперкуба');
+                
+                // Проверяем, активны ли контролы гиперкуба
+                const hypercubeGroup = document.getElementById('hypercubeDimensionsGroup');
+                if (!hypercubeGroup || hypercubeGroup.style.display === 'none') {
+                    console.log('Контролы гиперкуба неактивны, пропускаем обновление');
+                    return;
+                }
+                
+                const controls = document.querySelector('.hypercube-controls');
+                if (!controls) {
+                    console.error('Контейнер .hypercube-controls не найден!');
+                    return;
+                }
+                
+                const dimensions = [];
+                for (let i = 1; i <= this.hypercubeDimensionCount; i++) {
+                    const select = document.getElementById(`hypercubeDim${i}`);
+                    if (select) {
+                        const value = parseInt(select.value);
+                        dimensions.push(value);
+                        console.log(`✓ hypercubeDim${i}: ${value}`);
+                    } else {
+                        console.error(`✗ Элемент hypercubeDim${i} не найден!`);
+                    }
+                }
+                
+                // Вычисляем общее количество процессоров
+                let totalProcessors = 1;
+                dimensions.forEach(dim => {
+                    totalProcessors *= dim;
+                });
+                
+                this.hypercubeDimensions = dimensions;
+                this.numProcessors = totalProcessors;
+                
+                // Обновляем поле количества процессоров
+                const processorsInput = document.getElementById('processors');
+                if (processorsInput) {
+                    processorsInput.value = totalProcessors;
+                }
+                
+                // Обновляем статус
+                const statusDiv = document.getElementById('systemStatus');
+                if (statusDiv) {
+                    statusDiv.textContent = `Гиперкуб ${dimensions.join('×')}: ${this.numProcessors} процессоров`;
+                }
+                
+                console.log(`✓ Размерности гиперкуба: [${dimensions.join(', ')}], процессоров: ${totalProcessors}`);
+            }
+
+            createHypercubeTopology() {
+                const dims = this.hypercubeDimensions;
+                
+                // Создаем связи гиперкуба
+                for(let i = 0; i < this.processors.length; i++) {
+                    const coords = this.getNodeCoordinates(i, dims);
+                    
+                    // Для каждого измерения создаем связь с соседом
+                    for(let d = 0; d < dims.length; d++) {
+                        const neighborCoords = [...coords];
+                        neighborCoords[d] = (neighborCoords[d] + 1) % dims[d];
+                        
+                        const neighborIndex = this.getNodeIndex(neighborCoords, dims);
+                        
+                        if(neighborIndex < this.processors.length) {
+                            this.adjacencyMatrix[i][neighborIndex] = true;
+                            this.adjacencyMatrix[neighborIndex][i] = true;
+                        }
+                    }
+                }
+            }
+            
+            getNodeCoordinates(index, dimensions) {
+                const coords = [];
+                let remaining = index;
+                
+                for(let i = dimensions.length - 1; i >= 0; i--) {
+                    coords[i] = remaining % dimensions[i];
+                    remaining = Math.floor(remaining / dimensions[i]);
+                }
+                
+                return coords;
+            }
+            
+            getNodeIndex(coordinates, dimensions) {
+                let index = 0;
+                let multiplier = 1;
+                
+                for(let i = dimensions.length - 1; i >= 0; i--) {
+                    index += coordinates[i] * multiplier;
+                    multiplier *= dimensions[i];
+                }
+                
+                return index;
+            }
+
+            create3DHypercubeVisualization(width, height) {
+                const nodePositions = {};
+                
+                if (this.processors.length === 1) {
+                    nodePositions[0] = {x: width / 2, y: height / 2, z: 0, scale: 1};
+                    return nodePositions;
+                }
+                
+                const dims = this.hypercubeDimensions;
+                const scale = Math.min(width, height) * 0.4;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // Для 2D гиперкуба используем плоское отображение без паралакса
+                if (dims.length === 2) {
+                    for (let i = 0; i < this.processors.length; i++) {
+                        const coords = this.getNodeCoordinates(i, dims);
+                        
+                        // Простое 2D размещение без 3D эффектов
+                        const x = centerX + (coords[0] - (dims[0] - 1) / 2) * scale * 0.8;
+                        const y = centerY + (coords[1] - (dims[1] - 1) / 2) * scale * 0.8;
+                        
+                        nodePositions[i] = {
+                            x: x,
+                            y: y,
+                            z: 0,
+                            scale: 1 // Одинаковый масштаб для всех узлов
+                        };
+                    }
+                    return nodePositions;
+                }
+                
+                // Для 3+ измерений используем 3D визуализацию с паралаксом
+                const viewDistance = 800;
+                const rotationX = -0.3;
+                const rotationY = 0.4;
+                const centerY3D = height * 0.4; // Немного выше центра для 3D вида
+                
+                for (let i = 0; i < this.processors.length; i++) {
+                    const coords = this.getNodeCoordinates(i, dims);
+                    
+                    let x3d, y3d, z3d;
+                    
+                    if (dims.length === 3) {
+                        // 3D гиперкуб (куб)
+                        x3d = (coords[0] - (dims[0] - 1) / 2) * scale * 0.8;
+                        y3d = (coords[1] - (dims[1] - 1) / 2) * scale * 0.8;
+                        z3d = (coords[2] - (dims[2] - 1) / 2) * scale * 0.8;
+                    } else {
+                        // 4D+ гиперкуб - проекция на 3D
+                        x3d = (coords[0] - (dims[0] - 1) / 2) * scale * 0.7;
+                        y3d = (coords[1] - (dims[1] - 1) / 2) * scale * 0.7;
+                        z3d = (coords[2] - (dims[2] - 1) / 2) * scale * 0.7;
+                        
+                        // Добавляем влияние дополнительных измерений как смещение
+                        for (let d = 3; d < Math.min(dims.length, 6); d++) {
+                            const offset = (coords[d] - (dims[d] - 1) / 2) * scale * 0.15 * (d - 2);
+                            x3d += offset * Math.cos(d * 0.5);
+                            y3d += offset * Math.sin(d * 0.5);
+                            z3d += offset * 0.3;
+                        }
+                    }
+                    
+                    // Применяем вращение
+                    const rotatedCoords = this.rotatePoint3D(x3d, y3d, z3d, rotationX, rotationY, 0);
+                    
+                    // Применяем перспективную проекцию
+                    const projected = this.perspectiveProject(
+                        rotatedCoords.x, 
+                        rotatedCoords.y, 
+                        rotatedCoords.z, 
+                        viewDistance
+                    );
+                    
+                    nodePositions[i] = {
+                        x: centerX + projected.x,
+                        y: centerY3D + projected.y,
+                        z: rotatedCoords.z,
+                        scale: projected.scale
+                    };
+                }
+                
+                return nodePositions;
+            }
+
+            rotatePoint3D(x, y, z, angleX, angleY, angleZ) {
+                // Поворот вокруг X
+                const cosX = Math.cos(angleX);
+                const sinX = Math.sin(angleX);
+                const y1 = y * cosX - z * sinX;
+                const z1 = y * sinX + z * cosX;
+                
+                // Поворот вокруг Y
+                const cosY = Math.cos(angleY);
+                const sinY = Math.sin(angleY);
+                const x2 = x * cosY + z1 * sinY;
+                const z2 = -x * sinY + z1 * cosY;
+                
+                // Поворот вокруг Z
+                const cosZ = Math.cos(angleZ);
+                const sinZ = Math.sin(angleZ);
+                const x3 = x2 * cosZ - y1 * sinZ;
+                const y3 = x2 * sinZ + y1 * cosZ;
+                
+                return {x: x3, y: y3, z: z2};
+            }
+
+            perspectiveProject(x, y, z, viewDistance) {
+                const distance = viewDistance + z;
+                const scale = viewDistance / distance;
+                return {
+                    x: x * scale,
+                    y: y * scale,
+                    scale: scale
+                };
+            }
+        }
+
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', () => {
+            new MessagePassingSimulator();
+        });
+    </script>
+</body>
+</html> 
